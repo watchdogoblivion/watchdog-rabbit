@@ -1,11 +1,16 @@
 package com.oblivion.watchdogs.rabbit.services.implementations;
 
+import static com.oblivion.watchdogs.rabbit.utility.GenericUtility.getProxy;
+
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.oblivion.watchdogs.common.annotations.LoggingAspectEnabled;
+import com.oblivion.watchdogs.rabbit.aop.LoggingAspectImpl;
+import com.oblivion.watchdogs.rabbit.mq.implementations.RabbitMQSenderImpl;
+import com.oblivion.watchdogs.rabbit.mq.interfaces.RabbitMQSender;
 import com.oblivion.watchdogs.rabbit.services.interfaces.RabbitMQService;
 
 /**
@@ -53,7 +58,7 @@ public class RabbitMQServiceImpl implements RabbitMQService {
 	 * @throws Exception
 	 */
 	public Map<String, String> sendMessage(String message) throws Exception {
-		return null;
+		return getProxy(new RabbitMQSenderImpl(), RabbitMQSender.class, LoggingAspectImpl.class).call(message);
 	}
 
 }
