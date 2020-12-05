@@ -1,6 +1,7 @@
 package com.oblivion.watchdogs.rabbit.mq.implementations;
 
 import static com.oblivion.watchdogs.common.logger.Log.debug;
+import static com.oblivion.watchdogs.rabbit.constants.GeneralConstants.staticAppInstanceCount;
 import static com.oblivion.watchdogs.rabbit.constants.RabbitConstants.REFRESH_EXCHANGE;
 
 import java.io.IOException;
@@ -8,6 +9,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oblivion.watchdogs.common.annotations.LoggingAspectEnabled;
 import com.oblivion.watchdogs.rabbit.mq.interfaces.RabbitMQSender;
@@ -79,6 +81,7 @@ public class RabbitMQSenderImpl implements RabbitMQSender {
 		channel.basicPublish(REFRESH_EXCHANGE, "N/A", props, message.getBytes("UTF-8"));
 
 		final Map<String, String> consumerResponses = new TreeMap<>();
+		AtomicInteger tagCount = new AtomicInteger(0);
 		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
 			debug(this, "Inside deliveryCallback - correlationId: {}, deliveryCorrelationId: {}, deliveryTag: {}",
 					correlationId, delivery.getProperties().getCorrelationId(),
@@ -87,6 +90,7 @@ public class RabbitMQSenderImpl implements RabbitMQSender {
 				consumerResponses.put(
 						"Success for delivery tag - " + String.valueOf(delivery.getEnvelope().getDeliveryTag()),
 						new String(delivery.getBody(), "UTF-8"));
+				tagCount.incrementAndGet();
 			}
 		};
 		CancelCallback cancelCallback = consumerTag -> {
@@ -94,6 +98,8 @@ public class RabbitMQSenderImpl implements RabbitMQSender {
 		};
 
 		String consumerTag = channel.basicConsume(PRODUCER_QUEUE, true, deliverCallback, cancelCallback);
+		consumerResponses.put("Expected tag count", String.valueOf(staticAppInstanceCount));
+		consumerResponses.put("Actual tag count", String.valueOf(tagCount.get()));
 		channel.basicCancel(consumerTag);
 		return consumerResponses;
 	}
