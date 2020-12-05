@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import com.oblivion.watchdogs.rabbit.configurations.async.ContextBoundExecutor;
 import com.oblivion.watchdogs.rabbit.configurations.async.ThreadProperties;;
 
 /**
@@ -83,7 +84,7 @@ public class RabbitConfiguration {
 	 * @return
 	 */
 	public ThreadPoolTaskExecutor rabbitListenerTaskExecutor() {
-		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		ThreadPoolTaskExecutor executor = new ContextBoundExecutor();
 		executor.setCorePoolSize(threadProperties.getDefaultCorePoolSize());
 		executor.setMaxPoolSize(threadProperties.getDefaultMaxPoolSize());
 		executor.setQueueCapacity(threadProperties.getDefaultQueueCapacity());
