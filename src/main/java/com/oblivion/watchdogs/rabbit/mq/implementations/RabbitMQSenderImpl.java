@@ -1,13 +1,17 @@
 package com.oblivion.watchdogs.rabbit.mq.implementations;
 
 import static com.oblivion.watchdogs.common.logger.Log.debug;
+import static com.oblivion.watchdogs.common.logger.Log.warn;
 import static com.oblivion.watchdogs.rabbit.constants.GeneralConstants.staticAppInstanceCount;
+import static com.oblivion.watchdogs.rabbit.constants.GeneralConstants.staticRabbitMQProducerTimeout;
 import static com.oblivion.watchdogs.rabbit.constants.RabbitConstants.REFRESH_EXCHANGE;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -81,6 +85,7 @@ public class RabbitMQSenderImpl implements RabbitMQSender {
 		channel.basicPublish(REFRESH_EXCHANGE, "N/A", props, message.getBytes("UTF-8"));
 
 		final Map<String, String> consumerResponses = new TreeMap<>();
+		CountDownLatch latch = new CountDownLatch(staticAppInstanceCount);
 		AtomicInteger tagCount = new AtomicInteger(0);
 		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
 			debug(this, "Inside deliveryCallback - correlationId: {}, deliveryCorrelationId: {}, deliveryTag: {}",
@@ -91,6 +96,7 @@ public class RabbitMQSenderImpl implements RabbitMQSender {
 						"Success for delivery tag - " + String.valueOf(delivery.getEnvelope().getDeliveryTag()),
 						new String(delivery.getBody(), "UTF-8"));
 				tagCount.incrementAndGet();
+				latch.countDown();
 			}
 		};
 		CancelCallback cancelCallback = consumerTag -> {
@@ -98,6 +104,13 @@ public class RabbitMQSenderImpl implements RabbitMQSender {
 		};
 
 		String consumerTag = channel.basicConsume(PRODUCER_QUEUE, true, deliverCallback, cancelCallback);
+		if (!latch.await(staticRabbitMQProducerTimeout, TimeUnit.MILLISECONDS)) {
+			String warningMessage = String.format(
+					"RabbitMQ timed out waiting for a response from a consumer. Read timed out: %sms",
+					staticRabbitMQProducerTimeout);
+			warn(this, warningMessage);
+			consumerResponses.put("Warning", warningMessage);
+		}
 		consumerResponses.put("Expected tag count", String.valueOf(staticAppInstanceCount));
 		consumerResponses.put("Actual tag count", String.valueOf(tagCount.get()));
 		channel.basicCancel(consumerTag);

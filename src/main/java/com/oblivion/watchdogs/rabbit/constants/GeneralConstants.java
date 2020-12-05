@@ -22,7 +22,18 @@ public class GeneralConstants {
 	/**
 	 * 
 	 */
+	@Value("${rabbitMQ.producer.timeout:3000}")
+	private Integer rabbitMQProducerTimeout;
+	
+	/**
+	 * 
+	 */
 	public static Integer staticAppInstanceCount;
+	
+	/**
+	 * 
+	 */
+	public static Integer staticRabbitMQProducerTimeout;
 	
 	/**
 	 * 
@@ -30,6 +41,7 @@ public class GeneralConstants {
 	@PostConstruct
 	private void postConstruction() {
 		staticAppInstanceCount = appInstanceCount;
+		staticRabbitMQProducerTimeout = rabbitMQProducerTimeout;
 	}
 	
 }
